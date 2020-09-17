@@ -26,23 +26,28 @@ def loss_batch(model, loss_func, xb, yb, opt=None):
     
     return loss.item(), len(xb)
 
+def accuracy(out, yb):
+    preds = torch.argmax(out, dim=1)
+    return (preds == yb).float().mean()
+
 # BASIC FIT FUNCTION
 def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
     for epoch in range(epochs):
         model.train()
         for xb, yb in train_dl:
-            xb = xb.to(dev)
-            yb = yb.to(dev)
-            loss_batch(model, loss_func, xb, yb, opt)
+            loss_batch(model, loss_func, xb.to(dev), yb.to(dev), opt)
         
         model.eval()
         with torch.no_grad():
             losses, nums = zip(
                 *[loss_batch(model, loss_func, xb.to(dev), yb.to(dev)) for xb, yb in valid_dl]
             )
+            acc = tuple(accuracy(model(xb.to(dev)), yb.to(dev)).item() for xb, yb in valid_dl)
+            
         val_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
+        acc_v = np.sum(np.multiply(acc, nums)) / np.sum(nums)
 
-        print(epoch, val_loss)
+        print(epoch, "- loss: ", val_loss, "- accuracy: ", acc_v)
 
 
 
@@ -90,7 +95,7 @@ print(dev)
 # MODEL FITTING
 bs = 64
 lr = 0.1
-epochs = 3
+epochs = 6
 
 loss_func = F.cross_entropy
 
@@ -100,7 +105,7 @@ valid_dl = DataLoader(valid_ds, batch_size=bs * 2)
 model = cnn.CNN()
 model.to(dev)
 
-opt = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+opt = optim.SGD(model.parameters(), lr=lr, momentum=0.4)
 
 
 fit(epochs, model, loss_func, opt, train_dl, valid_dl)
@@ -114,10 +119,10 @@ import math
 model.to(torch.device("cpu"))
 # pylint: enable=E1101
 
-for xb, yb in valid_dl:
-    for i in range(10):
-        plt.imshow(xb[i].reshape((28,28)), cmap="gray")
-        guess = model.forward(xb)[i]
-        plt.gcf().text(0.02, 0.55, "guess: " + str(max(range(len(guess)), key=guess.__getitem__)), fontsize=14)
-        plt.gcf().text(0.02, 0.45, "number: " + str(yb[i].item()), fontsize=14)
-        plt.show()
+for i in range(5):
+    xb, yb = next(valid_dl.__iter__())
+    plt.imshow(xb[i].reshape((28,28)), cmap="gray")
+    guess = model.forward(xb)[i]
+    plt.gcf().text(0.02, 0.55, "guess: " + str(max(range(len(guess)), key=guess.__getitem__)), fontsize=14)
+    plt.gcf().text(0.02, 0.45, "number: " + str(yb[i].item()), fontsize=14)
+    plt.show()
