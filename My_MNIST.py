@@ -94,7 +94,7 @@ print(dev)
 
 # MODEL FITTING
 bs = 64
-lr = 0.1
+lr = 0.2
 epochs = 6
 
 loss_func = F.cross_entropy
